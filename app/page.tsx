@@ -35,50 +35,60 @@ export default function Home() {
   );
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
+    (connection: Connection) =>
+      setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
     []
   );
 
-  const addNode = (label: string) => {
+  // Add node dynamically at a given index
+  const addNode = (label: string, index: number) => {
     const newNode: Node = {
-      id: (nodes.length + 1).toString(),
+      id: (index + 1).toString(),
       type: 'default',
       data: { label },
-      position: { x: nodes.length * 250, y: 200 }, // Left-to-right layout
+      position: { x: index * 300, y: 200 }, // left-to-right spacing
     };
+
     setNodes((nds) => [...nds, newNode]);
 
-    // Connect to previous node
-    if (nodes.length > 0) {
-      const prevId = nodes[nodes.length - 1].id;
+    if (index > 0) {
       setEdges((eds) => [
         ...eds,
-        { id: `e${prevId}-${nodes.length + 1}`, source: prevId, target: newNode.id, animated: true },
+        {
+          id: `e${index}-${index + 1}`,
+          source: index.toString(),
+          target: (index + 1).toString(),
+          animated: true,
+        },
       ]);
     }
   };
 
+  // Animate node addition sequentially
   const handleAnalyze = async () => {
-    if (!ticker || !startDate || !endDate) return alert('Enter ticker and dates');
+    if (!ticker || !startDate || !endDate)
+      return alert('Enter ticker and dates');
 
     setLoading(true);
     setNodes([]);
     setEdges([]);
 
-    try {
-      // Simulate AI reasoning steps left-to-right
-      addNode(`Fetch ${ticker} Price Data`);
-      addNode('Sentiment Analysis: News Article');
-      addNode('Agent Decision: Investigate Earnings');
-      addNode('Inference: Conclusion from Data');
+    const steps = [
+      `Fetch ${ticker} Price Data`,
+      'Sentiment Analysis: News Article',
+      'Agent Decision: Investigate Earnings',
+      'Cross-Validate Data',
+      'Spawn Sub-Investigation',
+      'Inference: Conclusion from Data',
+    ];
 
-      // You can dynamically add more nodes here using API responses
-    } catch (err) {
-      console.error(err);
-      addNode('Error fetching AI data');
-    } finally {
-      setLoading(false);
+    // Add nodes one by one with delay
+    for (let i = 0; i < steps.length; i++) {
+      addNode(steps[i], i);
+      await new Promise((resolve) => setTimeout(resolve, 800)); // 0.8s delay
     }
+
+    setLoading(false);
   };
 
   return (
