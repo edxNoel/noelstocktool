@@ -9,21 +9,32 @@ const client = new OpenAI({
 
 // Helper: fetch daily CSV from Stooq (no API key required)
 // Example: https://stooq.com/q/d/l/?s=aapl.us&i=d
-async function fetchPriceCSV(symbol: string, start: string, end: string): Promise<string | null> {
+async function fetchPriceCSV(symbol: string, start: string | undefined, end: string | undefined): Promise<string | null> {
+  if (!symbol || !start || !end) {
+    console.error('fetchPriceCSV missing parameters:', { symbol, start, end });
+    return null;
+  }
+
+  const sym = symbol.toLowerCase().includes('.') ? symbol : `${symbol}.us`;
+  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(sym)}&d1=${start.replace(/-/g,'')}&d2=${end.replace(/-/g,'')}&i=d`;
+
   try {
-    const sym = symbol.toLowerCase().includes('.') ? symbol : `${symbol}.us`;
-    const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(sym)}&d1=${start.replace(/-/g,'')}&d2=${end.replace(/-/g,'')}&i=d`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' } // Stooq sometimes blocks requests without a UA
+    });
 
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('Failed to fetch CSV:', res.status, await res.text());
+      return null;
+    }
 
-    const text = await res.text();
-    return text;
+    return await res.text();
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching CSV:', error);
     return null;
   }
 }
+
 
 // Helper: parse CSV text into structured data
 interface PriceData {
