@@ -13,6 +13,7 @@ import ReactFlow, {
   OnEdgesChange,
   applyNodeChanges,
   applyEdgeChanges,
+  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -40,32 +41,48 @@ export default function Home() {
     []
   );
 
-  const addNode = (step: { label: string; description: string }, index: number) => {
+  const addNode = (
+    step: { label: string; description: string },
+    index: number,
+    parentId?: string,
+    branch = 0
+  ) => {
+    const x = index * 350;
+    const y = 200 + branch * 150;
+
     const newNode: Node = {
-      id: (index + 1).toString(),
+      id: `${index}-${branch}`,
       type: 'default',
       data: {
         label: (
-          <div className="max-w-xs p-2 bg-white bg-opacity-80 rounded shadow">
+          <div className="p-3 rounded shadow bg-white bg-opacity-90 max-w-xs">
             <strong>{step.label}</strong>
             <p className="text-sm mt-1">{step.description}</p>
           </div>
         ),
       },
-      position: { x: index * 350, y: 200 },
+      position: { x, y },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
     };
 
     setNodes((nds) => [...nds, newNode]);
 
-    if (index > 0) {
+    if (parentId) {
       setEdges((eds) => [
         ...eds,
         {
-          id: `e${index}-${index + 1}`,
-          source: index.toString(),
-          target: (index + 1).toString(),
+          id: `e${parentId}-${newNode.id}`,
+          source: parentId,
+          target: newNode.id,
           animated: true,
         },
+      ]);
+    } else if (index > 0) {
+      const prevNode = `${index - 1}-0`;
+      setEdges((eds) => [
+        ...eds,
+        { id: `e${prevNode}-${newNode.id}`, source: prevNode, target: newNode.id, animated: true },
       ]);
     }
   };
@@ -88,8 +105,18 @@ export default function Home() {
       const steps: { label: string; description: string }[] = data.steps || [];
 
       for (let i = 0; i < steps.length; i++) {
-        addNode(steps[i], i);
-        await new Promise((resolve) => setTimeout(resolve, 800)); // animate left-to-right
+        const step = steps[i];
+
+        // Handle branches for sub-investigations
+        if (step.description.toLowerCase().includes('sub-investigation')) {
+          addNode(step, i, `${i - 1}-0`, 1);
+        } else if (step.description.toLowerCase().includes('cross-validate')) {
+          addNode(step, i, `${Math.max(0, i - 2)}-0`);
+        } else {
+          addNode(step, i);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 700));
       }
     } catch (err) {
       console.error(err);
