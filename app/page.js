@@ -8,36 +8,44 @@ export default function Page() {
   const [endDate, setEndDate] = useState("");
   const [nodes, setNodes] = useState([]);
 
-  // Simulate AI thinking dynamically
+  // Simulated AI "brain"
   const simulateAI = async () => {
-    setNodes([]); // Reset graph
+    setNodes([]); // reset nodes
     const newNodes = [];
 
-    const addNode = async (title, content) => {
-      newNodes.push({ title, content, id: newNodes.length });
+    const addNode = async (content) => {
+      newNodes.push({ content, id: newNodes.length });
       setNodes([...newNodes]);
-      await new Promise((r) => setTimeout(r, 1000)); // Pause to simulate thinking
+      await new Promise((r) => setTimeout(r, 1200)); // pause for thinking
     };
 
+    // Step 1: Fetch data
     await addNode(
-      `Fetch ${ticker} Price Data`,
-      `Fetching price data for ${ticker} from ${startDate} to ${endDate}`
+      `AI is considering which data sources to fetch for ${ticker} between ${startDate} and ${endDate}...`
     );
+
+    // Step 2: Analyze
     await addNode(
-      "Sentiment Analysis: News Articles",
-      `Analyzing latest news for ${ticker} to determine market sentiment`
+      `AI analyzes market sentiment, news, and historical price trends for ${ticker}...`
     );
+
+    // Step 3: Make decisions
     await addNode(
-      "Agent Decision: Investigate Earnings",
-      `Based on sentiment and price trends, the AI chooses to investigate earnings reports`
+      `AI decides which factors are most important: earnings reports, market sentiment, volume trends...`
     );
+
+    // Step 4: Cross-validation / branching
     await addNode(
-      "Cross-Validation: Data Check",
-      `Comparing historical price movement vs earnings report for validation`
+      `AI cross-checks these factors against historical price movements to form a hypothesis...`
     );
+
+    // Step 5: Inference / conclusion
     await addNode(
-      "Inference Node: Price Prediction",
-      `AI predicts price movement for ${ticker}. Reason: strong earnings + positive sentiment. Recommendation: BUY`
+      `AI concludes: Based on the analysis, the price is likely to ${
+        Math.random() > 0.5 ? "rise" : "fall"
+      }. Reason: strong correlation with recent earnings and sentiment. Recommendation: ${
+        Math.random() > 0.5 ? "BUY" : "WAIT"
+      }.`
     );
   };
 
@@ -48,7 +56,7 @@ export default function Page() {
         <p className="text-lg">Watch the AI think, decide, and act</p>
       </header>
 
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex gap-2 flex-wrap">
         <input
           className="p-2 text-black rounded"
           placeholder="Ticker"
@@ -57,13 +65,13 @@ export default function Page() {
         />
         <input
           className="p-2 text-black rounded"
-          placeholder="Start Date (YYYY-MM-DD)"
+          type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
         />
         <input
           className="p-2 text-black rounded"
-          placeholder="End Date (YYYY-MM-DD)"
+          type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
         />
@@ -81,7 +89,6 @@ export default function Page() {
             key={node.id}
             className="min-w-[250px] p-4 bg-black bg-opacity-50 rounded shadow"
           >
-            <h2 className="font-bold text-lg">{node.title}</h2>
             <p>{node.content}</p>
           </div>
         ))}
