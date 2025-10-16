@@ -25,7 +25,7 @@ export default function Home() {
   const handleAnalyze = async () => {
     if (!ticker || !startDate || !endDate) return;
 
-    const res = await fetch('https://your-python-backend.com/analyze', {
+    const res = await fetch('https://noelstocktool.onrender.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ticker, start: startDate, end: endDate }),
