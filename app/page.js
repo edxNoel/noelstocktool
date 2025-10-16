@@ -3,23 +3,13 @@
 import { useState, useEffect } from 'react';
 
 export default function HomePage() {
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
   const [ticker, setTicker] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [step, setStep] = useState(0);
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
   const [running, setRunning] = useState(false);
-
-  // AI thinking steps
-  const steps = [
-    { label: 'Fetch TSLA Price Data', type: 'action' },
-    { label: 'Sentiment Analysis: News Article', type: 'analysis' },
-    { label: 'Agent Decision: Investigate Earnings', type: 'decision' },
-    { label: 'Spawn Sub-Investigation: Competitor Analysis', type: 'branch' },
-    { label: 'Cross-validate Data', type: 'edge' },
-    { label: 'Inference Node: Price Likely Increased', type: 'inference' },
-  ];
+  const [queue, setQueue] = useState([]); // queue of AI steps
 
   const handleAnalyze = () => {
     if (!ticker || !startDate || !endDate) {
@@ -27,37 +17,54 @@ export default function HomePage() {
       return;
     }
 
+    // reset nodes/edges
     setNodes([]);
     setEdges([]);
-    setStep(0);
+    setQueue([]);
     setRunning(true);
+
+    // generate dynamic AI steps based on ticker
+    const steps = [
+      { label: `Fetch ${ticker} Price Data`, type: 'action' },
+      { label: `Analyze News for ${ticker}`, type: 'analysis' },
+      { label: `Agent Decision: Investigate Earnings of ${ticker}`, type: 'decision' },
+      { label: `Spawn Sub-Investigation: Competitor Analysis`, type: 'branch' },
+      { label: `Cross-validate Historical Data`, type: 'edge' },
+      { label: `Inference Node: Likely Price Movement for ${ticker}`, type: 'inference' },
+    ];
+    setQueue(steps);
   };
 
   // AI simulation effect
   useEffect(() => {
-    if (!running) return;
-    if (step >= steps.length) {
-      setRunning(false);
-      return;
-    }
+    if (!running || queue.length === 0) return;
 
     const timer = setTimeout(() => {
-      const nextNode = { id: nodes.length + 1, label: steps[step].label };
-      setNodes((prev) => [...prev, nextNode]);
+      const step = queue[0];
+      const newNode = { id: nodes.length + 1, label: step.label, type: step.type };
+      setNodes((prev) => [...prev, newNode]);
 
-      // Add edges for cross-validation or branch nodes
-      if (steps[step].type === 'edge' && nodes.length > 1) {
+      // create edges dynamically
+      if (step.type === 'edge' && nodes.length > 0) {
         setEdges((prev) => [
           ...prev,
-          { from: nodes[nodes.length - 2].id, to: nodes[nodes.length - 1].id },
+          { from: nodes[nodes.length - 1].id, to: newNode.id },
         ]);
       }
 
-      setStep(step + 1);
-    }, 1500); // 1.5s delay per step
+      // branch node simulation
+      if (step.type === 'branch' && nodes.length > 0) {
+        const branchNode = { id: nodes.length + 2, label: `${step.label} Child`, type: 'branch-child' };
+        setNodes((prev) => [...prev, branchNode]);
+        setEdges((prev) => [...prev, { from: newNode.id, to: branchNode.id }]);
+      }
+
+      // remove the processed step from queue
+      setQueue((prev) => prev.slice(1));
+    }, 1500);
 
     return () => clearTimeout(timer);
-  }, [step, nodes, running]);
+  }, [queue, running, nodes]);
 
   return (
     <div className="h-screen w-screen bg-gradient-to-br from-purple-700 via-pink-500 to-orange-400 flex flex-col items-center p-8 text-white overflow-x-auto">
@@ -99,7 +106,7 @@ export default function HomePage() {
         {nodes.map((node) => (
           <div
             key={node.id}
-            className={`p-4 rounded shadow-lg min-w-[200px] bg-black bg-opacity-50 border-2 border-white`}
+            className="p-4 rounded shadow-lg min-w-[220px] bg-black bg-opacity-50 border-2 border-white"
           >
             {node.label}
           </div>
@@ -119,9 +126,9 @@ export default function HomePage() {
               key={idx}
               className="absolute bg-white h-1"
               style={{
-                left: `${fromIndex * 220 + 100}px`,
+                left: `${fromIndex * 240 + 110}px`,
                 top: '20px',
-                width: `${(toIndex - fromIndex) * 220}px`,
+                width: `${(toIndex - fromIndex) * 240}px`,
               }}
             />
           );
