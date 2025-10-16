@@ -1,80 +1,79 @@
-import os
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from dotenv import load_dotenv
-import httpx
+from langgraph.agent import Agent
+from langgraph.nodes import LLMNode
+from langgraph.graph import Graph
+import yfinance as yf
+import os
 
-# New LangGraph imports
-from langgraph import Graph, Node
+app = FastAPI()
 
-# Load environment variables
-load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-app = FastAPI(title="NoelStockBot Backend")
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Request schema
+# Request body model
 class AnalyzeRequest(BaseModel):
     ticker: str
-    start: str
-    end: str
+    start_date: str  # YYYY-MM-DD
+    end_date: str    # YYYY-MM-DD
 
-# Fetch stock CSV
-async def fetch_price_csv(symbol: str, start: str, end: str) -> str:
-    symbol = symbol.lower() + ".us" if "." not in symbol else symbol.lower()
-    url = f"https://stooq.com/q/d/l/?s={symbol}&d1={start.replace('-','')}&d2={end.replace('-','')}&i=d"
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to fetch stock data")
-        return resp.text
+
+# Utility to fetch historical stock prices
+def fetch_stock_data(ticker: str, start_date: str, end_date: str):
+    try:
+        df = yf.download(ticker, start=start_date, end=end_date)
+        if df.empty:
+            raise ValueError("No data for given dates.")
+        return df.to_dict(orient="records")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.post("/analyze")
-async def analyze(payload: AnalyzeRequest):
-    ticker = payload.ticker
-    start = payload.start
-    end = payload.end
+async def analyze_stock(data: AnalyzeRequest):
+    # 1️⃣ Validate and fetch data
+    price_data = fetch_stock_data(data.ticker, data.start_date, data.end_date)
 
-    # Step 1: Fetch stock data
-    csv_data = await fetch_price_csv(ticker, start, end)
-    if not csv_data.strip():
-        raise HTTPException(status_code=400, detail="No stock data returned")
-
-    # Step 2: Create a LangGraph
-    graph = Graph(name=f"{ticker} Stock Analysis")
-
-    # Step 3: Add nodes using new API
-    price_node = Node(
-        name="Fetch Price Data",
-        prompt=f"Analyze the stock {ticker} from {start} to {end} and explain why the price changed."
+    # 2️⃣ Create LangGraph agent
+    graph = Graph(name=f"{data.ticker} Investigation")
+    agent = Agent(
+        graph=graph,
+        openai_api_key=OPENAI_API_KEY,
+        name="StockInvestigator"
     )
-    graph.add_node(price_node)
 
-    sentiment_node = Node(
-        name="Sentiment Analysis: News Article",
-        prompt=f"Analyze news sentiment for {ticker} between {start} and {end}."
+    # 3️⃣ Seed agent with nodes
+    fetch_node = LLMNode(
+        label=f"Fetch {data.ticker} Price Data",
+        prompt=f"Fetched price data from {data.start_date} to {data.end_date}: {price_data}"
+    )
+    graph.add_node(fetch_node)
+
+    sentiment_node = LLMNode(
+        label="Sentiment Analysis: News & Social Media",
+        prompt=f"Analyze sentiment for {data.ticker} in this date range."
     )
     graph.add_node(sentiment_node)
+    graph.add_edge(fetch_node.id, sentiment_node.id)
 
-    decision_node = Node(
-        name="Agent Decision: Investigate Earnings",
-        prompt=f"Based on price and sentiment analysis, decide if we should investigate earnings, regulatory filings, or social media next."
+    decision_node = LLMNode(
+        label="Agent Decision: Investigate Earnings",
+        prompt=f"Based on price and sentiment, decide next step."
     )
     graph.add_node(decision_node)
+    graph.add_edge(sentiment_node.id, decision_node.id)
 
-    # Step 4: Run nodes
-    steps = []
-    for node in [price_node, sentiment_node, decision_node]:
-        output = node.run(api_key=OPENAI_API_KEY)
-        steps.append({"label": node.name, "description": output})
+    inference_node = LLMNode(
+        label="Inference Node: Price Movement Conclusion",
+        prompt="Combine all previous data to explain why the stock price changed."
+    )
+    graph.add_node(inference_node)
+    graph.add_edge(fetch_node.id, inference_node.id)
+    graph.add_edge(sentiment_node.id, inference_node.id)
+    graph.add_edge(decision_node.id, inference_node.id)
 
-    return {"steps": steps}
+    # 4️⃣ Let agent run (optional: async LLM generation)
+    await agent.run_llm_nodes()
+
+    # 5️⃣ Return graph structure for frontend
+    return graph.to_dict()
