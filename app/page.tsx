@@ -1,181 +1,103 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import ReactFlow, {
-  addEdge,
   MiniMap,
   Controls,
   Background,
   Node,
   Edge,
-  Connection,
-  OnNodesChange,
-  OnEdgesChange,
-  applyNodeChanges,
-  applyEdgeChanges,
-  Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+interface Step {
+  label: string;
+  description: string;
+}
+
 export default function Home() {
-  const [ticker, setTicker] = useState('AAPL');
-  const [startDate, setStartDate] = useState('2025-01-01');
-  const [endDate, setEndDate] = useState('2025-10-01');
-  const [loading, setLoading] = useState(false);
+  const [ticker, setTicker] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-  const onEdgesChange: OnEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
-  const onConnect = useCallback(
-    (connection: Connection) =>
-      setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
-    []
-  );
+  const handleAnalyze = async () => {
+    if (!ticker || !startDate || !endDate) return;
 
-  const addNode = (
-    step: { label: string; description: string },
-    index: number,
-    parentId?: string,
-    branch = 0
-  ) => {
-    const x = index * 350;
-    const y = 200 + branch * 150;
+    const res = await fetch('https://your-python-backend.com/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker, start: startDate, end: endDate }),
+    });
+    const data = await res.json();
 
-    const newNode: Node = {
-      id: `${index}-${branch}`,
-      type: 'default',
-      data: {
-        label: (
-          <div className="p-3 rounded shadow bg-white bg-opacity-90 max-w-xs">
+    const newNodes: Node[] = [];
+    const newEdges: Edge[] = [];
+
+    data.steps.forEach((step: Step, index: number) => {
+      newNodes.push({
+        id: `node-${index}`,
+        position: { x: index * 300, y: 200 }, // horizontal layout
+        data: { label: (
+          <div className="p-3 rounded shadow-lg bg-white bg-opacity-90 max-w-xs">
             <strong>{step.label}</strong>
             <p className="text-sm mt-1">{step.description}</p>
           </div>
-        ),
-      },
-      position: { x, y },
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-    };
-
-    setNodes((nds) => [...nds, newNode]);
-
-    if (parentId) {
-      setEdges((eds) => [
-        ...eds,
-        { id: `e${parentId}-${newNode.id}`, source: parentId, target: newNode.id, animated: true },
-      ]);
-    } else if (index > 0) {
-      const prevNode = `${index - 1}-0`;
-      setEdges((eds) => [
-        ...eds,
-        { id: `e${prevNode}-${newNode.id}`, source: prevNode, target: newNode.id, animated: true },
-      ]);
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (!ticker || !startDate || !endDate) return alert('Enter ticker and dates');
-
-    setLoading(true);
-    setNodes([]);
-    setEdges([]);
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, start: startDate, end: endDate }),
+        )},
+        type: 'default',
       });
 
-      const data = await res.json();
-      let steps: { label: string; description: string }[] = data.steps || [];
-
-      // Add the Expected Inputs / Outputs as the first node
-      steps = [
-        {
-          label: 'Expected Inputs / Outputs',
-          description: `Expected inputs: ticker, start date and price, end date and price
-Expected Output: Create a full stack web app which displays why the price changed (increased or decreased)
-Baseline Techstack: Frontend - Next.js, Backend - FastAPI, Agentic framework - LangGraph`,
-        },
-        ...steps,
-      ];
-
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i];
-
-        if (step.description.toLowerCase().includes('sub-investigation')) {
-          addNode(step, i, `${i - 1}-0`, 1);
-        } else if (step.description.toLowerCase().includes('cross-validate')) {
-          addNode(step, i, `${Math.max(0, i - 2)}-0`);
-        } else {
-          addNode(step, i);
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 700));
+      if (index > 0) {
+        newEdges.push({
+          id: `edge-${index - 1}-${index}`,
+          source: `node-${index - 1}`,
+          target: `node-${index}`,
+          animated: true,
+          style: { stroke: 'black' },
+        });
       }
-    } catch (err) {
-      console.error(err);
-      addNode({ label: 'Error fetching AI data', description: '' }, 0);
-    } finally {
-      setLoading(false);
-    }
+    });
+
+    setNodes(newNodes);
+    setEdges(newEdges);
   };
 
   return (
-    <div className="h-screen w-screen bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex flex-col m-0 p-0">
-      <header className="bg-black text-white py-4 px-6 flex justify-between items-center shadow-md">
-        <h1 className="text-2xl font-bold">NoelStockBot</h1>
-        <p className="text-sm">Watch the AI think in real-time</p>
-      </header>
-
-      <div className="flex items-center gap-4 p-4 bg-black bg-opacity-40">
+    <div className="h-full w-full flex flex-col">
+      <div className="p-4 flex gap-4 bg-black/30">
         <input
+          type="text"
+          placeholder="Ticker"
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
-          className="px-2 py-1 rounded border border-gray-300"
-          placeholder="Ticker"
+          className="p-2 rounded"
         />
         <input
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="px-2 py-1 rounded border border-gray-300"
+          className="p-2 rounded"
         />
         <input
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          className="px-2 py-1 rounded border border-gray-300"
+          className="p-2 rounded"
         />
         <button
           onClick={handleAnalyze}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
         >
-          {loading ? 'Analyzing...' : 'Analyze'}
+          Analyze
         </button>
       </div>
 
-      <div className="flex-1 m-0 p-0">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          fitView
-          className="h-full w-full"
-        >
+      <div className="flex-1">
+        <ReactFlow nodes={nodes} edges={edges} fitView>
           <MiniMap />
           <Controls />
-          <Background />
+          <Background gap={16} />
         </ReactFlow>
       </div>
     </div>
