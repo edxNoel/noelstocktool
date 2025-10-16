@@ -1,76 +1,70 @@
+// app/api/analyze/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import fetch from 'node-fetch';
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-// Helper: fetch daily stock CSV from Stooq (free, no API key)
-async function fetchPriceCSV(symbol: string, start: string, end: string) {
-  const sym = symbol.toLowerCase().includes('.') ? symbol : symbol + '.us';
-  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(sym)}&d1=${start.replace(/-/g, '')}&d2=${end.replace(/-/g, '')}&i=d`;
-  
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Failed to fetch price data');
-  const text = await res.text();
-  if (!text || text.startsWith('No data')) throw new Error('No price data available');
-  return text;
-}
+type AnalyzeRequest = {
+  ticker: string;
+  start: string;
+  end: string;
+};
 
 export async function POST(req: NextRequest) {
   try {
-    const { ticker, start, end } = await req.json();
+    const { ticker, start, end } = (await req.json()) as AnalyzeRequest;
+
     if (!ticker || !start || !end) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing ticker, start, or end date' },
+        { status: 400 }
+      );
     }
 
-    // 1️⃣ Data validation
-    try {
-      await fetchPriceCSV(ticker, start, end);
-    } catch (err) {
-      return NextResponse.json({ error: 'Invalid ticker or date range' }, { status: 400 });
-    }
-
-    // 2️⃣ AI investigation
+    // Prompt AI to reason like an autonomous investigator
     const prompt = `
-You are a stock research AI that autonomously investigates ${ticker} from ${start} to ${end}.
-Generate a JSON array of steps where each step has:
-
-{
-  "label": "Step title",
-  "description": "Short explanation of what the AI did or decided in this step"
-}
-
-Include examples of:
-- Fetching price data
-- Sentiment Analysis of news
-- Making decisions like "Agent Decision: Investigate Earnings"
-- Spawning sub-investigations
-- Cross-validating data
-- Combining prior nodes to form an Inference Node
-
-Return only the JSON array.
+You are an autonomous AI agent analyzing why the stock ${ticker} changed price between ${start} and ${end}. 
+Your task is to:
+1. Identify relevant sources (news, earnings, SEC filings, social media).
+2. Determine which leads to follow based on findings.
+3. Make independent decisions, spawn parallel investigations, cross-validate data.
+4. Form hypotheses and test them.
+5. Present each step as an object with:
+   - label: short description of action
+   - description: detailed explanation
+Return at least 8-12 steps, ending with an inference/conclusion node explaining why the price increased or decreased.
+Format response as JSON: { steps: [ { label: string, description: string }, ... ] }
 `;
 
-    const response = await client.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0,
+      temperature: 0.7,
     });
 
-    const text = response.choices[0].message?.content || '';
-    let steps;
+    const raw = completion.choices[0].message?.content || '';
+    let steps: { label: string; description: string }[] = [];
+
     try {
-      steps = JSON.parse(text);
-    } catch {
-      steps = text
+      // Try parsing JSON returned by GPT
+      const json = JSON.parse(raw);
+      steps = json.steps || [];
+    } catch (e) {
+      // If parsing fails, fallback to splitting lines
+      steps = raw
         .split('\n')
-        .filter((line: string) => line.trim())
-        .map((line: string) => ({ label: line, description: '' }));
+        .filter((line) => line.trim())
+        .map((line, i) => ({
+          label: `Step ${i + 1}`,
+          description: line.trim(),
+        }));
     }
 
     return NextResponse.json({ steps });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: 'Failed to analyze' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to analyze stock' }, { status: 500 });
   }
 }
