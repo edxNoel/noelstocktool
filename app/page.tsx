@@ -95,12 +95,22 @@ export default function Home() {
       });
 
       const data = await res.json();
-      const steps: { label: string; description: string }[] = data.steps || [];
+      let steps: { label: string; description: string }[] = data.steps || [];
+
+      // Add the Expected Inputs / Outputs as the first node
+      steps = [
+        {
+          label: 'Expected Inputs / Outputs',
+          description: `Expected inputs: ticker, start date and price, end date and price
+Expected Output: Create a full stack web app which displays why the price changed (increased or decreased)
+Baseline Techstack: Frontend - Next.js, Backend - FastAPI, Agentic framework - LangGraph`,
+        },
+        ...steps,
+      ];
 
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
 
-        // Branching logic
         if (step.description.toLowerCase().includes('sub-investigation')) {
           addNode(step, i, `${i - 1}-0`, 1);
         } else if (step.description.toLowerCase().includes('cross-validate')) {
@@ -120,7 +130,7 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen w-screen bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex flex-col">
+    <div className="h-screen w-screen bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex flex-col m-0 p-0">
       <header className="bg-black text-white py-4 px-6 flex justify-between items-center shadow-md">
         <h1 className="text-2xl font-bold">NoelStockBot</h1>
         <p className="text-sm">Watch the AI think in real-time</p>
@@ -153,7 +163,7 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="flex-1">
+      <div className="flex-1 m-0 p-0">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -161,6 +171,7 @@ export default function Home() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           fitView
+          className="h-full w-full"
         >
           <MiniMap />
           <Controls />
