@@ -3,13 +3,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-type Node = {
-  id: number;
-  label: string;
-};
-
 export default function HomePage() {
-  const [nodes, setNodes] = useState<Node[]>([]);
+  const [nodes, setNodes] = useState([]);
   const [ticker, setTicker] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -20,8 +15,8 @@ export default function HomePage() {
       return;
     }
 
-    // Simulate AI node-based analysis (replace with real API if needed)
-    const newNodes: Node[] = [
+    // Simulate AI node-based analysis
+    const newNodes = [
       { id: 1, label: `Expected inputs: ticker=${ticker}, start=${startDate}, end=${endDate}` },
       { id: 2, label: 'Fetching historical price data...' },
       { id: 3, label: 'Performing AI sentiment & trend analysis...' },
