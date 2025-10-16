@@ -40,13 +40,12 @@ export default function Home() {
     []
   );
 
-  // Add node dynamically at a given index
   const addNode = (label: string, index: number) => {
     const newNode: Node = {
       id: (index + 1).toString(),
       type: 'default',
       data: { label },
-      position: { x: index * 300, y: 200 }, // left-to-right spacing
+      position: { x: index * 300, y: 200 },
     };
 
     setNodes((nds) => [...nds, newNode]);
@@ -64,7 +63,6 @@ export default function Home() {
     }
   };
 
-  // Animate node addition sequentially
   const handleAnalyze = async () => {
     if (!ticker || !startDate || !endDate)
       return alert('Enter ticker and dates');
@@ -73,22 +71,27 @@ export default function Home() {
     setNodes([]);
     setEdges([]);
 
-    const steps = [
-      `Fetch ${ticker} Price Data`,
-      'Sentiment Analysis: News Article',
-      'Agent Decision: Investigate Earnings',
-      'Cross-Validate Data',
-      'Spawn Sub-Investigation',
-      'Inference: Conclusion from Data',
-    ];
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, start: startDate, end: endDate }),
+      });
 
-    // Add nodes one by one with delay
-    for (let i = 0; i < steps.length; i++) {
-      addNode(steps[i], i);
-      await new Promise((resolve) => setTimeout(resolve, 800)); // 0.8s delay
+      const data = await res.json();
+      const steps = data.steps || [];
+
+      for (let i = 0; i < steps.length; i++) {
+        const step = typeof steps[i] === 'string' ? steps[i] : steps[i].label;
+        addNode(step, i);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+    } catch (err) {
+      console.error(err);
+      addNode('Error fetching AI data', 0);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -98,7 +101,6 @@ export default function Home() {
         <p className="text-sm">Watch the AI think in real-time</p>
       </header>
 
-      {/* Controls */}
       <div className="flex items-center gap-4 p-4 bg-black bg-opacity-40">
         <input
           value={ticker}
@@ -126,7 +128,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* React Flow full-screen canvas */}
       <div className="flex-1">
         <ReactFlow
           nodes={nodes}
