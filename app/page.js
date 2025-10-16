@@ -11,6 +11,54 @@ export default function HomePage() {
   const [queue, setQueue] = useState([]);
   const [running, setRunning] = useState(false);
 
+  // Simulate AI reasoning for each step dynamically
+  const simulateNodeOutput = (step, prevNodes) => {
+    switch (step) {
+      case 'Fetch Price Data':
+        return {
+          thought: `I need historical price data from ${startDate} to ${endDate} for ${ticker}.`,
+          decision: `Retrieve daily closing prices and calculate moving averages.`,
+          effect: `Base dataset ready with ${ticker} price history.`,
+        };
+      case 'Analyze News':
+        return {
+          thought: `I will scan recent news articles for ${ticker} to determine sentiment.`,
+          decision: `Tag each article as positive, negative, or neutral.`,
+          effect: `Sentiment score will influence AI's risk assessment for ${ticker}.`,
+        };
+      case 'Investigate Earnings':
+        return {
+          thought: `Earnings reports impact price movements. I will examine them.`,
+          decision: `Check earnings dates, results, and projections.`,
+          effect: `Future predictions now include earnings analysis.`,
+        };
+      case 'Competitor Analysis':
+        return {
+          thought: `I need to compare ${ticker} against competitors to identify external influences.`,
+          decision: `Analyze competitor price trends and news.`,
+          effect: `Adjust expectations for ${ticker} based on market competition.`,
+        };
+      case 'Cross-Validate Data':
+        return {
+          thought: `Validate anomalies in ${ticker} price history and sentiment.`,
+          decision: `Flag unusual patterns to ensure reliable inference.`,
+          effect: `Confidence in AI conclusions improved.`,
+        };
+      case 'Inference':
+        // Combine all previous nodes to make final reasoning
+        const summary = prevNodes.map((n) => `${n.title}: ${n.effect}`).join(' | ');
+        const recommendation = Math.random() > 0.5 ? 'Buy' : 'Sell';
+        const reasoning = `After analyzing price trends, news sentiment, earnings reports, and competitor activity, ${ticker} price is likely influenced as follows: ${summary}. Recommendation: ${recommendation}.`;
+        return {
+          thought: `Combine all prior analysis to form final conclusion.`,
+          decision: `Determine predicted price movement and recommendation.`,
+          effect: reasoning,
+        };
+      default:
+        return { thought: '', decision: '', effect: '' };
+    }
+  };
+
   const handleAnalyze = () => {
     if (!ticker || !startDate || !endDate) {
       alert('Enter ticker and dates');
@@ -23,45 +71,12 @@ export default function HomePage() {
     setRunning(true);
 
     const steps = [
-      {
-        title: `Fetch ${ticker} Price Data`,
-        thought: `I need historical price data from ${startDate} to ${endDate} to see trends.`,
-        decision: `Retrieve daily close prices and moving averages.`,
-        effect: `This gives me the base dataset for trend analysis.`,
-      },
-      {
-        title: `Analyze News`,
-        thought: `I will scan recent news articles for sentiment.`,
-        decision: `Tag each article as positive, negative, or neutral.`,
-        effect: `Sentiment score will influence risk assessment for ${ticker}.`,
-      },
-      {
-        title: `Decision: Investigate Earnings`,
-        thought: `Based on price trends and news sentiment, earnings may impact stock movement.`,
-        decision: `Check earnings report dates and projections.`,
-        effect: `Future predictions now factor in earnings analysis.`,
-      },
-      {
-        title: `Sub-Investigation: Competitor Analysis`,
-        thought: `I will compare ${ticker} with competitors for external influence.`,
-        decision: `Analyze competitors’ price movement and news.`,
-        effect: `Adjust expectations for ${ticker} based on market competition.`,
-      },
-      {
-        title: `Cross-Validate Historical Data`,
-        thought: `I need to validate anomalies against historical trends.`,
-        decision: `Flag unusual patterns in the data.`,
-        effect: `Ensures the model’s inferences are reliable.`,
-      },
-      {
-        title: `Inference: Likely Price Movement`,
-        thought: `Combining all previous analyses to determine the reason behind the predicted movement.`,
-        decision: `Predict price movement and evaluate if it's a good buy/sell/hold opportunity.`,
-        effect: `Based on historical trends, news sentiment, earnings, and competitors:
-- If positive trends + positive news + good earnings → likely price UP → Buy recommended.
-- If negative trends + negative news + poor earnings → likely price DOWN → Sell recommended.
-- Otherwise, Hold and monitor.`,
-      },
+      'Fetch Price Data',
+      'Analyze News',
+      'Investigate Earnings',
+      'Competitor Analysis',
+      'Cross-Validate Data',
+      'Inference',
     ];
 
     setQueue(steps);
@@ -72,12 +87,12 @@ export default function HomePage() {
 
     const timer = setTimeout(() => {
       const step = queue[0];
+      const output = simulateNodeOutput(step, nodes);
+
       const newNode = {
         id: nodes.length + 1,
-        title: step.title,
-        thought: step.thought,
-        decision: step.decision,
-        effect: step.effect,
+        title: step,
+        ...output,
       };
 
       setNodes((prev) => [...prev, newNode]);
@@ -99,73 +114,4 @@ export default function HomePage() {
     <div className="h-screen w-screen bg-gradient-to-br from-purple-700 via-pink-500 to-orange-400 flex flex-col items-center p-8 text-white overflow-x-auto">
       <header className="mb-6 text-center">
         <h1 className="text-4xl font-bold">NoelStockBot</h1>
-        <p className="text-lg">Watch the AI think, decide, and act</p>
-      </header>
-
-      <div className="flex gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Ticker"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          className="p-2 rounded text-black"
-        />
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="p-2 rounded text-black"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="p-2 rounded text-black"
-        />
-        <button
-          onClick={handleAnalyze}
-          className="bg-white text-black px-4 py-2 rounded font-bold hover:bg-gray-200"
-        >
-          Analyze
-        </button>
-      </div>
-
-      {/* Node graph */}
-      <div className="flex items-start gap-6 overflow-x-auto py-4">
-        {nodes.map((node) => (
-          <div
-            key={node.id}
-            className="p-4 rounded shadow-lg min-w-[280px] bg-black bg-opacity-50 border-2 border-white"
-          >
-            <h3 className="font-bold mb-2">{node.title}</h3>
-            <p><strong>Thought:</strong> {node.thought}</p>
-            <p><strong>Decision:</strong> {node.decision}</p>
-            <p><strong>Effect:</strong> {node.effect}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Edges */}
-      <div className="relative w-full h-16">
-        {edges.map((edge, idx) => {
-          const fromIndex = nodes.findIndex((n) => n.id === edge.from);
-          const toIndex = nodes.findIndex((n) => n.id === edge.to);
-
-          if (fromIndex === -1 || toIndex === -1) return null;
-
-          return (
-            <div
-              key={idx}
-              className="absolute bg-white h-1"
-              style={{
-                left: `${fromIndex * 300 + 140}px`,
-                top: '20px',
-                width: `${(toIndex - fromIndex) * 300}px`,
-              }}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+        <p className="text-lg">Watch the AI think, decide, and act</
