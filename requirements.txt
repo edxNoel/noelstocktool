@@ -1,4 +1,8 @@
 fastapi
 uvicorn
+httpx
+pydantic
 openai
 git+https://github.com/langgraph/langgraph.git@main#egg=langgraph
+yfinance
+python-dotenv
