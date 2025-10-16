@@ -71,12 +71,7 @@ export default function Home() {
     if (parentId) {
       setEdges((eds) => [
         ...eds,
-        {
-          id: `e${parentId}-${newNode.id}`,
-          source: parentId,
-          target: newNode.id,
-          animated: true,
-        },
+        { id: `e${parentId}-${newNode.id}`, source: parentId, target: newNode.id, animated: true },
       ]);
     } else if (index > 0) {
       const prevNode = `${index - 1}-0`;
@@ -107,7 +102,6 @@ export default function Home() {
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
 
-        // Handle branches for sub-investigations
         if (step.description.toLowerCase().includes('sub-investigation')) {
           addNode(step, i, `${i - 1}-0`, 1);
         } else if (step.description.toLowerCase().includes('cross-validate')) {
@@ -165,15 +159,4 @@ export default function Home() {
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          fitView
-        >
-          <MiniMap />
-          <Controls />
-          <Background />
-        </ReactFlow>
-      </div>
-    </div>
-  );
-}
+          onEdges
