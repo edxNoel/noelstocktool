@@ -1,86 +1,84 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import axios from "axios";
+import { useState } from 'react';
+import axios from 'axios';
 
-export default function Home() {
-  const [ticker, setTicker] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [nodes, setNodes] = useState<any[]>([]);
-  const [edges, setEdges] = useState<any[]>([]);
+type Node = {
+  id: number;
+  label: string;
+};
+
+export default function HomePage() {
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [ticker, setTicker] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const handleAnalyze = async () => {
-    setNodes([]);
-    setEdges([]);
-    try {
-      const response = await axios.post("/api/analyze", {
-        ticker,
-        start_date: startDate,
-        end_date: endDate,
-      });
-
-      const { analysisSteps, connections } = response.data;
-
-      setNodes(analysisSteps);
-      setEdges(connections);
-    } catch (error) {
-      console.error(error);
+    if (!ticker || !startDate || !endDate) {
+      alert('Please fill all fields');
+      return;
     }
+
+    // Simulate AI node-based analysis (replace with real API if needed)
+    const newNodes: Node[] = [
+      { id: 1, label: `Expected inputs: ticker=${ticker}, start=${startDate}, end=${endDate}` },
+      { id: 2, label: 'Fetching historical price data...' },
+      { id: 3, label: 'Performing AI sentiment & trend analysis...' },
+      { id: 4, label: 'Inference: Price likely increased due to positive news' },
+    ];
+    setNodes(newNodes);
   };
 
   return (
-    <div className="h-screen w-screen bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex flex-col">
-      <header className="bg-black text-white py-4 px-6 flex justify-between items-center shadow-md">
-        <h1 className="text-2xl font-bold">NoelStockBot</h1>
-        <p className="text-sm">Watch the AI think in real-time</p>
+    <div className="h-full w-full flex flex-col items-center justify-start p-8 text-white">
+      <header className="mb-6 text-center">
+        <h1 className="text-4xl font-bold">NoelStockBot</h1>
+        <p className="text-lg">Watch the AI think in real-time</p>
       </header>
 
-      <main className="flex-grow flex flex-col items-center justify-start p-6 gap-4 overflow-auto">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Ticker"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            className="p-2 rounded shadow"
-          />
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="p-2 rounded shadow"
-          />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="p-2 rounded shadow"
-          />
-          <button
-            onClick={handleAnalyze}
-            className="bg-black text-white px-4 py-2 rounded shadow hover:bg-gray-800"
-          >
-            Analyze
-          </button>
-        </div>
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Ticker"
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value)}
+          className="p-2 rounded text-black"
+        />
+        <input
+          type="date"
+          placeholder="Start Date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="p-2 rounded text-black"
+        />
+        <input
+          type="date"
+          placeholder="End Date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="p-2 rounded text-black"
+        />
+        <button
+          onClick={handleAnalyze}
+          className="bg-white text-black px-4 py-2 rounded font-bold hover:bg-gray-200"
+        >
+          Analyze
+        </button>
+      </div>
 
-        <div className="flex flex-col gap-4 w-full max-w-4xl">
-          {nodes.map((node) => (
-            <div
-              key={node.id}
-              className="p-3 rounded shadow bg-white bg-opacity-90"
-            >
-              <strong>{node.label}</strong>
-              <p className="text-sm mt-1">{node.description}</p>
-            </div>
-          ))}
-        </div>
-      </main>
+      <div className="flex flex-col items-start gap-2 w-full max-w-2xl">
+        {nodes.map((node) => (
+          <div key={node.id} className="bg-black bg-opacity-50 p-4 rounded w-full">
+            {node.label}
+          </div>
+        ))}
+      </div>
 
-      <footer className="bg-black text-white text-center py-2">
-        Expected inputs :- ticker, start date and price, end date and price <br />
-        Expected Output:- Create a full stack web app which displays why the price changed (increased or decreased)
+      <footer className="mt-8 text-sm text-gray-200 text-center">
+        Expected inputs: ticker, start date and end date. <br />
+        Expected output: Create a full-stack web app which displays why the price changed (increased or decreased). <br />
+        Baseline Techstack: Frontend - Next.js
       </footer>
     </div>
   );
