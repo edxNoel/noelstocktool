@@ -6,9 +6,12 @@ export default function HomePage() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [ticker, setTicker] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [step, setStep] = useState(0);
+  const [running, setRunning] = useState(false);
 
-  // Predefined AI steps for simulation
+  // AI thinking steps
   const steps = [
     { label: 'Fetch TSLA Price Data', type: 'action' },
     { label: 'Sentiment Analysis: News Article', type: 'analysis' },
@@ -19,25 +22,30 @@ export default function HomePage() {
   ];
 
   const handleAnalyze = () => {
-    if (!ticker) {
-      alert('Please enter a ticker symbol');
+    if (!ticker || !startDate || !endDate) {
+      alert('Please enter ticker and dates');
       return;
     }
 
     setNodes([]);
     setEdges([]);
     setStep(0);
+    setRunning(true);
   };
 
-  // Simulate AI thinking in real-time
+  // AI simulation effect
   useEffect(() => {
-    if (step >= steps.length) return;
+    if (!running) return;
+    if (step >= steps.length) {
+      setRunning(false);
+      return;
+    }
 
     const timer = setTimeout(() => {
       const nextNode = { id: nodes.length + 1, label: steps[step].label };
       setNodes((prev) => [...prev, nextNode]);
 
-      // Randomly connect edges for cross-validation or branching
+      // Add edges for cross-validation or branch nodes
       if (steps[step].type === 'edge' && nodes.length > 1) {
         setEdges((prev) => [
           ...prev,
@@ -46,16 +54,16 @@ export default function HomePage() {
       }
 
       setStep(step + 1);
-    }, 1500); // 1.5 seconds per step
+    }, 1500); // 1.5s delay per step
 
     return () => clearTimeout(timer);
-  }, [step, nodes]);
+  }, [step, nodes, running]);
 
   return (
     <div className="h-screen w-screen bg-gradient-to-br from-purple-700 via-pink-500 to-orange-400 flex flex-col items-center p-8 text-white overflow-x-auto">
       <header className="mb-6 text-center">
         <h1 className="text-4xl font-bold">NoelStockBot</h1>
-        <p className="text-lg">Watch the AI agent think in real-time</p>
+        <p className="text-lg">Watch the AI agent think step by step</p>
       </header>
 
       <div className="flex gap-4 mb-6">
@@ -66,6 +74,18 @@ export default function HomePage() {
           onChange={(e) => setTicker(e.target.value)}
           className="p-2 rounded text-black"
         />
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="p-2 rounded text-black"
+        />
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="p-2 rounded text-black"
+        />
         <button
           onClick={handleAnalyze}
           className="bg-white text-black px-4 py-2 rounded font-bold hover:bg-gray-200"
@@ -74,7 +94,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Node graph container */}
+      {/* Node graph */}
       <div className="flex items-start gap-6 overflow-x-auto py-4">
         {nodes.map((node) => (
           <div
@@ -86,7 +106,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Edges (simple visualization with lines) */}
+      {/* Edge visualization */}
       <div className="relative w-full h-16">
         {edges.map((edge, idx) => {
           const fromIndex = nodes.findIndex((n) => n.id === edge.from);
