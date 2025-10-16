@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import axios from 'axios';
 
 export default function HomePage() {
   const [nodes, setNodes] = useState([]);
@@ -9,7 +8,7 @@ export default function HomePage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = () => {
     if (!ticker || !startDate || !endDate) {
       alert('Please fill all fields');
       return;
