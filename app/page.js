@@ -22,7 +22,6 @@ export default function HomePage() {
     setQueue([]);
     setRunning(true);
 
-    // Step sequence
     const steps = [
       {
         title: `Fetch ${ticker} Price Data`,
@@ -56,16 +55,18 @@ export default function HomePage() {
       },
       {
         title: `Inference: Likely Price Movement`,
-        thought: `Combining all previous analyses...`,
-        decision: `Predict ${ticker} is likely to move up/down/stable.`,
-        effect: `Final decision node shows AI’s overall conclusion and confidence.`,
+        thought: `Combining all previous analyses to determine the reason behind the predicted movement.`,
+        decision: `Predict price movement and evaluate if it's a good buy/sell/hold opportunity.`,
+        effect: `Based on historical trends, news sentiment, earnings, and competitors:
+- If positive trends + positive news + good earnings → likely price UP → Buy recommended.
+- If negative trends + negative news + poor earnings → likely price DOWN → Sell recommended.
+- Otherwise, Hold and monitor.`,
       },
     ];
 
     setQueue(steps);
   };
 
-  // Sequential processing with dynamic reasoning
   useEffect(() => {
     if (!running || queue.length === 0) return;
 
