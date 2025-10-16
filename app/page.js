@@ -1,56 +1,69 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function HomePage() {
   const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
   const [ticker, setTicker] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [step, setStep] = useState(0);
+
+  // Predefined AI steps for simulation
+  const steps = [
+    { label: 'Fetch TSLA Price Data', type: 'action' },
+    { label: 'Sentiment Analysis: News Article', type: 'analysis' },
+    { label: 'Agent Decision: Investigate Earnings', type: 'decision' },
+    { label: 'Spawn Sub-Investigation: Competitor Analysis', type: 'branch' },
+    { label: 'Cross-validate Data', type: 'edge' },
+    { label: 'Inference Node: Price Likely Increased', type: 'inference' },
+  ];
 
   const handleAnalyze = () => {
-    if (!ticker || !startDate || !endDate) {
-      alert('Please fill all fields');
+    if (!ticker) {
+      alert('Please enter a ticker symbol');
       return;
     }
 
-    // Simulate AI node-based analysis
-    const newNodes = [
-      { id: 1, label: `Expected inputs: ticker=${ticker}, start=${startDate}, end=${endDate}` },
-      { id: 2, label: 'Fetching historical price data...' },
-      { id: 3, label: 'Performing AI sentiment & trend analysis...' },
-      { id: 4, label: 'Inference: Price likely increased due to positive news' },
-    ];
-    setNodes(newNodes);
+    setNodes([]);
+    setEdges([]);
+    setStep(0);
   };
 
+  // Simulate AI thinking in real-time
+  useEffect(() => {
+    if (step >= steps.length) return;
+
+    const timer = setTimeout(() => {
+      const nextNode = { id: nodes.length + 1, label: steps[step].label };
+      setNodes((prev) => [...prev, nextNode]);
+
+      // Randomly connect edges for cross-validation or branching
+      if (steps[step].type === 'edge' && nodes.length > 1) {
+        setEdges((prev) => [
+          ...prev,
+          { from: nodes[nodes.length - 2].id, to: nodes[nodes.length - 1].id },
+        ]);
+      }
+
+      setStep(step + 1);
+    }, 1500); // 1.5 seconds per step
+
+    return () => clearTimeout(timer);
+  }, [step, nodes]);
+
   return (
-    <div className="h-full w-full flex flex-col items-center justify-start p-8 text-white">
+    <div className="h-screen w-screen bg-gradient-to-br from-purple-700 via-pink-500 to-orange-400 flex flex-col items-center p-8 text-white overflow-x-auto">
       <header className="mb-6 text-center">
         <h1 className="text-4xl font-bold">NoelStockBot</h1>
-        <p className="text-lg">Watch the AI think in real-time</p>
+        <p className="text-lg">Watch the AI agent think in real-time</p>
       </header>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex gap-4 mb-6">
         <input
           type="text"
           placeholder="Ticker"
           value={ticker}
           onChange={(e) => setTicker(e.target.value)}
-          className="p-2 rounded text-black"
-        />
-        <input
-          type="date"
-          placeholder="Start Date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="p-2 rounded text-black"
-        />
-        <input
-          type="date"
-          placeholder="End Date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
           className="p-2 rounded text-black"
         />
         <button
@@ -61,19 +74,39 @@ export default function HomePage() {
         </button>
       </div>
 
-      <div className="flex flex-col items-start gap-2 w-full max-w-2xl">
+      {/* Node graph container */}
+      <div className="flex items-start gap-6 overflow-x-auto py-4">
         {nodes.map((node) => (
-          <div key={node.id} className="bg-black bg-opacity-50 p-4 rounded w-full">
+          <div
+            key={node.id}
+            className={`p-4 rounded shadow-lg min-w-[200px] bg-black bg-opacity-50 border-2 border-white`}
+          >
             {node.label}
           </div>
         ))}
       </div>
 
-      <footer className="mt-8 text-sm text-gray-200 text-center">
-        Expected inputs: ticker, start date and end date. <br />
-        Expected output: Create a full-stack web app which displays why the price changed (increased or decreased). <br />
-        Baseline Techstack: Frontend - Next.js
-      </footer>
+      {/* Edges (simple visualization with lines) */}
+      <div className="relative w-full h-16">
+        {edges.map((edge, idx) => {
+          const fromIndex = nodes.findIndex((n) => n.id === edge.from);
+          const toIndex = nodes.findIndex((n) => n.id === edge.to);
+
+          if (fromIndex === -1 || toIndex === -1) return null;
+
+          return (
+            <div
+              key={idx}
+              className="absolute bg-white h-1"
+              style={{
+                left: `${fromIndex * 220 + 100}px`,
+                top: '20px',
+                width: `${(toIndex - fromIndex) * 220}px`,
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
