@@ -8,8 +8,8 @@ export default function HomePage() {
   const [endDate, setEndDate] = useState('');
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [queue, setQueue] = useState([]);
   const [running, setRunning] = useState(false);
-  const [queue, setQueue] = useState([]); // queue of AI steps
 
   const handleAnalyze = () => {
     if (!ticker || !startDate || !endDate) {
@@ -17,51 +17,67 @@ export default function HomePage() {
       return;
     }
 
-    // reset nodes/edges
+    // Reset everything
     setNodes([]);
     setEdges([]);
     setQueue([]);
     setRunning(true);
 
-    // generate dynamic AI steps based on ticker
+    // Queue of AI thoughts
     const steps = [
-      { label: `Fetch ${ticker} Price Data`, type: 'action' },
-      { label: `Analyze News for ${ticker}`, type: 'analysis' },
-      { label: `Agent Decision: Investigate Earnings of ${ticker}`, type: 'decision' },
-      { label: `Spawn Sub-Investigation: Competitor Analysis`, type: 'branch' },
-      { label: `Cross-validate Historical Data`, type: 'edge' },
-      { label: `Inference Node: Likely Price Movement for ${ticker}`, type: 'inference' },
+      {
+        title: `Fetch ${ticker} Price Data`,
+        content: `I need the historical price data for ${ticker} from ${startDate} to ${endDate} to see recent trends.`,
+      },
+      {
+        title: `Analyze News`,
+        content: `I will scan recent news articles for ${ticker} to gauge sentiment and detect any unusual events.`,
+      },
+      {
+        title: `Decision: Investigate Earnings`,
+        content: `Based on price trends and news, I will check if upcoming earnings reports might affect ${ticker}'s stock movement.`,
+      },
+      {
+        title: `Spawn Sub-Investigation: Competitor Analysis`,
+        content: `I will compare ${ticker} with competitors to see how external factors might influence performance.`,
+      },
+      {
+        title: `Cross-Validate Historical Data`,
+        content: `I need to ensure my price analysis matches historical patterns and validate any anomalies.`,
+      },
+      {
+        title: `Inference: Likely Price Movement`,
+        content: `Combining all data points, I estimate the likely price movement for ${ticker}.`,
+      },
     ];
+
     setQueue(steps);
   };
 
-  // AI simulation effect
+  // Sequentially process AI steps
   useEffect(() => {
     if (!running || queue.length === 0) return;
 
     const timer = setTimeout(() => {
       const step = queue[0];
-      const newNode = { id: nodes.length + 1, label: step.label, type: step.type };
+      const newNode = {
+        id: nodes.length + 1,
+        title: step.title,
+        content: step.content,
+      };
+
       setNodes((prev) => [...prev, newNode]);
 
-      // create edges dynamically
-      if (step.type === 'edge' && nodes.length > 0) {
+      // Connect edges sequentially
+      if (nodes.length > 0) {
         setEdges((prev) => [
           ...prev,
           { from: nodes[nodes.length - 1].id, to: newNode.id },
         ]);
       }
 
-      // branch node simulation
-      if (step.type === 'branch' && nodes.length > 0) {
-        const branchNode = { id: nodes.length + 2, label: `${step.label} Child`, type: 'branch-child' };
-        setNodes((prev) => [...prev, branchNode]);
-        setEdges((prev) => [...prev, { from: newNode.id, to: branchNode.id }]);
-      }
-
-      // remove the processed step from queue
       setQueue((prev) => prev.slice(1));
-    }, 1500);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [queue, running, nodes]);
@@ -106,9 +122,10 @@ export default function HomePage() {
         {nodes.map((node) => (
           <div
             key={node.id}
-            className="p-4 rounded shadow-lg min-w-[220px] bg-black bg-opacity-50 border-2 border-white"
+            className="p-4 rounded shadow-lg min-w-[260px] bg-black bg-opacity-50 border-2 border-white"
           >
-            {node.label}
+            <h3 className="font-bold mb-2">{node.title}</h3>
+            <p className="text-sm">{node.content}</p>
           </div>
         ))}
       </div>
@@ -126,9 +143,9 @@ export default function HomePage() {
               key={idx}
               className="absolute bg-white h-1"
               style={{
-                left: `${fromIndex * 240 + 110}px`,
+                left: `${fromIndex * 280 + 130}px`,
                 top: '20px',
-                width: `${(toIndex - fromIndex) * 240}px`,
+                width: `${(toIndex - fromIndex) * 280}px`,
               }}
             />
           );
