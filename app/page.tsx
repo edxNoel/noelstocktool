@@ -29,12 +29,10 @@ export default function Home() {
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
     []
   );
-
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
-
   const onConnect = useCallback(
     (connection: Connection) =>
       setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
@@ -102,6 +100,7 @@ export default function Home() {
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
 
+        // Branching logic
         if (step.description.toLowerCase().includes('sub-investigation')) {
           addNode(step, i, `${i - 1}-0`, 1);
         } else if (step.description.toLowerCase().includes('cross-validate')) {
@@ -159,4 +158,15 @@ export default function Home() {
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
-          onEdges
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+        >
+          <MiniMap />
+          <Controls />
+          <Background />
+        </ReactFlow>
+      </div>
+    </div>
+  );
+}
