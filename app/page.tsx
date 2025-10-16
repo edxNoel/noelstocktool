@@ -40,12 +40,19 @@ export default function Home() {
     []
   );
 
-  const addNode = (label: string, index: number) => {
+  const addNode = (step: { label: string; description: string }, index: number) => {
     const newNode: Node = {
       id: (index + 1).toString(),
       type: 'default',
-      data: { label },
-      position: { x: index * 300, y: 200 },
+      data: {
+        label: (
+          <div className="max-w-xs p-2 bg-white bg-opacity-80 rounded shadow">
+            <strong>{step.label}</strong>
+            <p className="text-sm mt-1">{step.description}</p>
+          </div>
+        ),
+      },
+      position: { x: index * 350, y: 200 },
     };
 
     setNodes((nds) => [...nds, newNode]);
@@ -64,8 +71,7 @@ export default function Home() {
   };
 
   const handleAnalyze = async () => {
-    if (!ticker || !startDate || !endDate)
-      return alert('Enter ticker and dates');
+    if (!ticker || !startDate || !endDate) return alert('Enter ticker and dates');
 
     setLoading(true);
     setNodes([]);
@@ -79,16 +85,15 @@ export default function Home() {
       });
 
       const data = await res.json();
-      const steps = data.steps || [];
+      const steps: { label: string; description: string }[] = data.steps || [];
 
       for (let i = 0; i < steps.length; i++) {
-        const step = typeof steps[i] === 'string' ? steps[i] : steps[i].label;
-        addNode(step, i);
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        addNode(steps[i], i);
+        await new Promise((resolve) => setTimeout(resolve, 800)); // animate left-to-right
       }
     } catch (err) {
       console.error(err);
-      addNode('Error fetching AI data', 0);
+      addNode({ label: 'Error fetching AI data', description: '' }, 0);
     } finally {
       setLoading(false);
     }
