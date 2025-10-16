@@ -1,185 +1,57 @@
-'use client';
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
 
-import { useState, useCallback } from 'react';
-import ReactFlow, {
-  addEdge,
-  MiniMap,
-  Controls,
-  Background,
-  Node,
-  Edge,
-  Connection,
-  OnNodesChange,
-  OnEdgesChange,
-  applyNodeChanges,
-  applyEdgeChanges,
-  Position,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export default function Home() {
-  const [ticker, setTicker] = useState('AAPL');
-  const [startDate, setStartDate] = useState('2025-01-01');
-  const [endDate, setEndDate] = useState('2025-10-01');
-  const [loading, setLoading] = useState(false);
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+export async function POST(req: NextRequest) {
+  try {
+    const { ticker, start, end } = await req.json();
 
-  const onNodesChange: OnNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-
-  const onEdgesChange: OnEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
-
-  const onConnect = useCallback(
-    (connection: Connection) =>
-      setEdges((eds) => addEdge({ ...connection, animated: true }, eds)),
-    []
-  );
-
-  const addNode = (
-    step: { label: string; description: string },
-    index: number,
-    parentId?: string,
-    branch = 0
-  ) => {
-    // Horizontal spacing
-    const x = index * 350;
-    const y = 200 + branch * 150;
-
-    const newNode: Node = {
-      id: `${index}-${branch}`,
-      type: 'default',
-      data: {
-        label: (
-          <div className="p-3 rounded shadow bg-white bg-opacity-90 max-w-xs">
-            <strong>{step.label}</strong>
-            <p className="text-sm mt-1">{step.description}</p>
-          </div>
-        ),
-      },
-      position: { x, y },
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-    };
-
-    setNodes((nds) => [...nds, newNode]);
-
-    if (parentId) {
-      setEdges((eds) => [
-        ...eds,
-        {
-          id: `e${parentId}-${newNode.id}`,
-          source: parentId,
-          target: newNode.id,
-          animated: true,
-        },
-      ]);
-    } else if (index > 0) {
-      // Connect to previous node by default
-      const prevNode = `${index - 1}-0`;
-      setEdges((eds) => [
-        ...eds,
-        { id: `e${prevNode}-${newNode.id}`, source: prevNode, target: newNode.id, animated: true },
-      ]);
+    if (!ticker || !start || !end) {
+      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
-  };
 
-  const handleAnalyze = async () => {
-    if (!ticker || !startDate || !endDate) return alert('Enter ticker and dates');
+    const prompt = `
+You are a stock research AI that autonomously investigates ${ticker} from ${start} to ${end}.
+Generate a JSON array of steps the AI would take, where each step has:
 
-    setLoading(true);
-    setNodes([]);
-    setEdges([]);
+{
+  "label": "Step title",
+  "description": "Short explanation of what the AI did or decided in this step"
+}
 
+Example output:
+[
+  {"label": "Fetch Price Data", "description": "Fetched daily historical prices from Stooq"},
+  {"label": "Analyze News Sentiment", "description": "Checked major news sources and social media for positive or negative sentiment"}
+]
+
+Focus only on stock research steps. Do not include unrelated advice, disclaimers, or safety messages.
+Return only the JSON array.
+`;
+
+    const response = await client.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+    });
+
+    const text = response.choices[0].message?.content || '';
+
+    let steps;
     try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, start: startDate, end: endDate }),
-      });
-
-      const data = await res.json();
-      const steps: { label: string; description: string }[] = data.steps || [];
-
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i];
-
-        // Example: split into branches if description mentions "sub-investigation"
-        if (step.description.toLowerCase().includes('sub-investigation')) {
-          addNode(step, i, `${i - 1}-0`, 1); // branch = 1
-        } else if (step.description.toLowerCase().includes('cross-validate')) {
-          // Connect to previous separate node
-          addNode(step, i, `${Math.max(0, i - 2)}-0`);
-        } else {
-          addNode(step, i);
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 700));
-      }
-    } catch (err) {
-      console.error(err);
-      addNode({ label: 'Error fetching AI data', description: '' }, 0);
-    } finally {
-      setLoading(false);
+      steps = JSON.parse(text);
+    } catch {
+      // fallback if parsing fails
+      steps = text
+        .split('\n')
+        .filter((line: string) => line.trim())
+        .map((line: string) => ({ label: line, description: '' }));
     }
-  };
 
-  return (
-    <div className="h-screen w-screen bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 flex flex-col">
-      {/* Black header */}
-      <header className="bg-black text-white py-4 px-6 flex justify-between items-center shadow-md">
-        <h1 className="text-2xl font-bold">NoelStockBot</h1>
-        <p className="text-sm">Watch the AI think in real-time</p>
-      </header>
-
-      {/* Controls */}
-      <div className="flex items-center gap-4 p-4 bg-black bg-opacity-40">
-        <input
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value.toUpperCase())}
-          className="px-2 py-1 rounded border border-gray-300"
-          placeholder="Ticker"
-        />
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="px-2 py-1 rounded border border-gray-300"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="px-2 py-1 rounded border border-gray-300"
-        />
-        <button
-          onClick={handleAnalyze}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
-        >
-          {loading ? 'Analyzing...' : 'Analyze'}
-        </button>
-      </div>
-
-      {/* React Flow */}
-      <div className="flex-1">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          fitView
-        >
-          <MiniMap />
-          <Controls />
-          <Background />
-        </ReactFlow>
-      </div>
-    </div>
-  );
+    return NextResponse.json({ steps });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Failed to analyze' }, { status: 500 });
+  }
 }
