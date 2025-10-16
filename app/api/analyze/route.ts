@@ -1,62 +1,90 @@
-import { NextResponse } from 'next/server';
+// app/api/analyze/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import axios from 'axios';
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI client
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-// Helper: fetch daily CSV from Stooq (no API key). Example: https://stooq.com/q/d/l/?s=aapl.us&i=d
-async function fetchPriceCSV(symbol, start, end) {
+// Helper: fetch daily CSV from Stooq (no API key required)
+// Example: https://stooq.com/q/d/l/?s=aapl.us&i=d
+async function fetchPriceCSV(symbol: string, start: string, end: string): Promise<string | null> {
   try {
-    const sym = symbol.toLowerCase().includes('.') ? symbol : (symbol + '.us');
+    const sym = symbol.toLowerCase().includes('.') ? symbol : `${symbol}.us`;
     const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(sym)}&d1=${start.replace(/-/g,'')}&d2=${end.replace(/-/g,'')}&i=d`;
-    const res = await axios.get(url);
-    return res.data; // CSV text
-  } catch (e) {
+
+    const res = await fetch(url);
+    if (!res.ok) return null;
+
+    const text = await res.text();
+    return text;
+  } catch (error) {
+    console.error(error);
     return null;
   }
 }
 
-export async function POST(req: Request) {
+// Helper: parse CSV text into structured data
+interface PriceData {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+function parseCSV(csv: string): PriceData[] {
+  const lines = csv.split('\n').filter(Boolean);
+  const header = lines.shift();
+  if (!header) return [];
+
+  return lines.map(line => {
+    const [date, open, high, low, close, volume] = line.split(',');
+    return {
+      date,
+      open: parseFloat(open),
+      high: parseFloat(high),
+      low: parseFloat(low),
+      close: parseFloat(close),
+      volume: parseFloat(volume)
+    };
+  });
+}
+
+// API Route handler
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { ticker, startDate, endDate } = body;
-    if (!ticker || !startDate || !endDate) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
-    }
+    const body: { ticker: string; start_date: string; end_date: string } = await req.json();
+    const { ticker, start_date, end_date } = body;
 
-    // Fetch price CSV (best-effort, may be null if stooq blocks)
-    const csv = await fetchPriceCSV(ticker, startDate, endDate);
+    // Fetch historical CSV
+    const csv = await fetchPriceCSV(ticker, start_date, end_date);
+    if (!csv) return NextResponse.json({ error: 'Failed to fetch stock data.' }, { status: 500 });
 
-    // Build prompt for the autonomous investigator
-    const prompt = `
-You are an autonomous financial investigator. Use the inputs below.
-Ticker: ${ticker}
-Date range: ${startDate} to ${endDate}
+    const prices = parseCSV(csv);
 
-If available, here is the historical price CSV (Date,Open,High,Low,Close,Volume):
-${csv ? csv.slice(0, 8000) : '[no CSV data available]'}
-
-Tasks (decide autonomously what to check and report on):
-- Decide which external sources to investigate (news, SEC/filings, earnings, social media) and why.
-- Suggest hypotheses and tests (e.g., abnormal volume, price shocks, earnings surprises).
-- Describe parallel investigation threads you would spawn and how you'd cross-check information.
-- Provide a prioritized list of leads and next actions.
-- Produce a concise conclusion stating whether further investigation is required.
-
-Return the result as plain text, with headings.
-`;
-
-    const completion = await client.chat.completions.create({
+    // Call OpenAI for autonomous analysis
+    const gptResponse = await client.chat.completions.create({
       model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.6,
-      max_tokens: 1500
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an autonomous stock investigator. Decide which leads to follow, what to investigate, and provide structured insights.'
+        },
+        {
+          role: 'user',
+          content: `Analyze the following stock price data and provide insights: ${JSON.stringify(prices)}`
+        }
+      ]
     });
 
-    const result = completion.choices?.[0]?.message?.content || null;
-    return NextResponse.json({ result });
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
+    const aiText = gptResponse.choices?.[0]?.message?.content || 'No response from AI';
+
+    return NextResponse.json({ analysis: aiText, prices });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: 'Server error occurred.' }, { status: 500 });
   }
 }
