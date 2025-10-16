@@ -13,48 +13,59 @@ export default function HomePage() {
 
   const handleAnalyze = () => {
     if (!ticker || !startDate || !endDate) {
-      alert('Please enter ticker and dates');
+      alert('Enter ticker and dates');
       return;
     }
 
-    // Reset everything
     setNodes([]);
     setEdges([]);
     setQueue([]);
     setRunning(true);
 
-    // Queue of AI thoughts
+    // Step sequence
     const steps = [
       {
         title: `Fetch ${ticker} Price Data`,
-        content: `I need the historical price data for ${ticker} from ${startDate} to ${endDate} to see recent trends.`,
+        thought: `I need historical price data from ${startDate} to ${endDate} to see trends.`,
+        decision: `Retrieve daily close prices and moving averages.`,
+        effect: `This gives me the base dataset for trend analysis.`,
       },
       {
         title: `Analyze News`,
-        content: `I will scan recent news articles for ${ticker} to gauge sentiment and detect any unusual events.`,
+        thought: `I will scan recent news articles for sentiment.`,
+        decision: `Tag each article as positive, negative, or neutral.`,
+        effect: `Sentiment score will influence risk assessment for ${ticker}.`,
       },
       {
         title: `Decision: Investigate Earnings`,
-        content: `Based on price trends and news, I will check if upcoming earnings reports might affect ${ticker}'s stock movement.`,
+        thought: `Based on price trends and news sentiment, earnings may impact stock movement.`,
+        decision: `Check earnings report dates and projections.`,
+        effect: `Future predictions now factor in earnings analysis.`,
       },
       {
-        title: `Spawn Sub-Investigation: Competitor Analysis`,
-        content: `I will compare ${ticker} with competitors to see how external factors might influence performance.`,
+        title: `Sub-Investigation: Competitor Analysis`,
+        thought: `I will compare ${ticker} with competitors for external influence.`,
+        decision: `Analyze competitors’ price movement and news.`,
+        effect: `Adjust expectations for ${ticker} based on market competition.`,
       },
       {
         title: `Cross-Validate Historical Data`,
-        content: `I need to ensure my price analysis matches historical patterns and validate any anomalies.`,
+        thought: `I need to validate anomalies against historical trends.`,
+        decision: `Flag unusual patterns in the data.`,
+        effect: `Ensures the model’s inferences are reliable.`,
       },
       {
         title: `Inference: Likely Price Movement`,
-        content: `Combining all data points, I estimate the likely price movement for ${ticker}.`,
+        thought: `Combining all previous analyses...`,
+        decision: `Predict ${ticker} is likely to move up/down/stable.`,
+        effect: `Final decision node shows AI’s overall conclusion and confidence.`,
       },
     ];
 
     setQueue(steps);
   };
 
-  // Sequentially process AI steps
+  // Sequential processing with dynamic reasoning
   useEffect(() => {
     if (!running || queue.length === 0) return;
 
@@ -63,12 +74,13 @@ export default function HomePage() {
       const newNode = {
         id: nodes.length + 1,
         title: step.title,
-        content: step.content,
+        thought: step.thought,
+        decision: step.decision,
+        effect: step.effect,
       };
 
       setNodes((prev) => [...prev, newNode]);
 
-      // Connect edges sequentially
       if (nodes.length > 0) {
         setEdges((prev) => [
           ...prev,
@@ -86,7 +98,7 @@ export default function HomePage() {
     <div className="h-screen w-screen bg-gradient-to-br from-purple-700 via-pink-500 to-orange-400 flex flex-col items-center p-8 text-white overflow-x-auto">
       <header className="mb-6 text-center">
         <h1 className="text-4xl font-bold">NoelStockBot</h1>
-        <p className="text-lg">Watch the AI agent think step by step</p>
+        <p className="text-lg">Watch the AI think, decide, and act</p>
       </header>
 
       <div className="flex gap-4 mb-6">
@@ -122,15 +134,17 @@ export default function HomePage() {
         {nodes.map((node) => (
           <div
             key={node.id}
-            className="p-4 rounded shadow-lg min-w-[260px] bg-black bg-opacity-50 border-2 border-white"
+            className="p-4 rounded shadow-lg min-w-[280px] bg-black bg-opacity-50 border-2 border-white"
           >
             <h3 className="font-bold mb-2">{node.title}</h3>
-            <p className="text-sm">{node.content}</p>
+            <p><strong>Thought:</strong> {node.thought}</p>
+            <p><strong>Decision:</strong> {node.decision}</p>
+            <p><strong>Effect:</strong> {node.effect}</p>
           </div>
         ))}
       </div>
 
-      {/* Edge visualization */}
+      {/* Edges */}
       <div className="relative w-full h-16">
         {edges.map((edge, idx) => {
           const fromIndex = nodes.findIndex((n) => n.id === edge.from);
@@ -143,9 +157,9 @@ export default function HomePage() {
               key={idx}
               className="absolute bg-white h-1"
               style={{
-                left: `${fromIndex * 280 + 130}px`,
+                left: `${fromIndex * 300 + 140}px`,
                 top: '20px',
-                width: `${(toIndex - fromIndex) * 280}px`,
+                width: `${(toIndex - fromIndex) * 300}px`,
               }}
             />
           );
