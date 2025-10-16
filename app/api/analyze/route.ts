@@ -11,9 +11,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    const prompt = `You are an autonomous stock research AI. Investigate ${ticker} between ${start} and ${end}. 
-    List each investigation step in order and provide a short label for each. Output a JSON array like:
-    [{"label":"Fetch TSLA Price Data"},{"label":"Sentiment Analysis: News Article"},{"label":"Agent Decision: Investigate Earnings"}]`;
+    const prompt = `
+You are an autonomous stock research AI. Investigate ${ticker} from ${start} to ${end}.
+Perform an independent investigation — do NOT use a predefined workflow.
+For each step, return a JSON object with:
+{
+  "label": "Step title",
+  "description": "What the AI did or decided at this step"
+}
+Return a JSON array of these objects. Example:
+[
+  {"label": "Fetch Price Data", "description": "Fetched daily historical prices from Stooq"},
+  {"label": "Sentiment Analysis", "description": "Analyzed news and social media sentiment"}
+]
+The agent should decide which sources to investigate, which leads to follow, when to spawn sub-investigations, and how to cross-validate information.
+`;
 
     const response = await client.chat.completions.create({
       model: 'gpt-4',
@@ -22,13 +34,13 @@ export async function POST(req: NextRequest) {
     });
 
     const text = response.choices[0].message?.content || '';
-    let steps;
 
+    let steps;
     try {
       steps = JSON.parse(text);
     } catch {
-      // fallback if JSON parsing fails
-      steps = text.split('\n').map((line: string) => ({ label: line }));
+      // fallback if parsing fails: each line becomes a label only
+      steps = text.split('\n').map((line: string) => ({ label: line, description: '' }));
     }
 
     return NextResponse.json({ steps });
